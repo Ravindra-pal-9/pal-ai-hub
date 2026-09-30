@@ -283,6 +283,7 @@ export default function App() {
   const socketRef = useRef(null);
   const selectedLangRef = useRef("hi-IN");
   const speakTextRef = useRef(null);
+  const latestTranscriptRef = useRef("");
 
   useEffect(() => {
     selectedLangRef.current = selectedLang;
@@ -639,9 +640,18 @@ export default function App() {
     };
   }, []);
 
-  // Speech Recognition with Zero-Duplication Fix
+  // Speech Recognition with iOS Safari & Android Cross-Platform Support
   const startListening = () => {
     startListeningRef.current = startListening;
+
+    // 1. Unlock iOS Safari Web Audio / Speech Synthesis on user gesture
+    if ("speechSynthesis" in window) {
+      try {
+        const unlock = new SpeechSynthesisUtterance(" ");
+        unlock.volume = 0.01;
+        window.speechSynthesis.speak(unlock);
+      } catch {}
+    }
 
     if (isListening) {
       if (recognitionRef.current) {
@@ -667,37 +677,72 @@ export default function App() {
     recognitionRef.current = recognition;
 
     recognition.continuous = false;
-    recognition.interimResults = false;
+    // Critical for iOS Safari: interimResults must be true or Safari silently fails to fire onresult
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.lang = selectedLangRef.current || "hi-IN";
 
     hasEmittedRef.current = false;
+    latestTranscriptRef.current = "";
 
     recognition.onstart = () => {
       setIsListening(true);
       setTranscript("");
+      setResponse("🎤 Sun rahi hoon... (Abhi bolein boss)");
       hasEmittedRef.current = false;
+      latestTranscriptRef.current = "";
     };
 
     recognition.onresult = (e) => {
-      if (hasEmittedRef.current) return;
-      hasEmittedRef.current = true;
+      let currentText = "";
+      let isFinal = false;
 
-      const finalTranscript = e.results[0][0].transcript;
-      setTranscript(finalTranscript);
-      sendCommand(finalTranscript);
+      for (let i = 0; i < e.results.length; ++i) {
+        currentText += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          isFinal = true;
+        }
+      }
+
+      if (currentText) {
+        latestTranscriptRef.current = currentText;
+        setTranscript(currentText);
+      }
+
+      if (isFinal && currentText.trim()) {
+        if (!hasEmittedRef.current) {
+          hasEmittedRef.current = true;
+          sendCommand(currentText.trim());
+        }
+      }
     };
 
     recognition.onerror = (e) => {
       console.warn("Speech error:", e.error);
       setIsListening(false);
       if (e.error === "not-allowed") {
-        alert("Microphone permission blocked! Browser me mic allow karein.");
+        setResponse("❌ Microphone blocked! iPhone Settings ➔ Safari ➔ Microphone Allow karein.");
+        alert("Microphone permission blocked! iPhone Settings ➔ Safari ➔ Microphone ko 'Allow' karein.");
+      } else if (e.error === "no-speech") {
+        setResponse("⚠️ Awaaz detect nahi hui. Kripya mic ke paas dobara bolein.");
+      } else if (e.error === "network") {
+        setResponse("⚠️ Network error: iPhone ka internet ya Siri Dictation check karein.");
+      } else {
+        setResponse(`⚠️ Speech error: ${e.error}`);
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      // iOS WebKit Fallback: If user spoke but Safari closed before setting isFinal
+      if (
+        !hasEmittedRef.current &&
+        latestTranscriptRef.current &&
+        latestTranscriptRef.current.trim()
+      ) {
+        hasEmittedRef.current = true;
+        sendCommand(latestTranscriptRef.current.trim());
+      }
     };
 
     try {
