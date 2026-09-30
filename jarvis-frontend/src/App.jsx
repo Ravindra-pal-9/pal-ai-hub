@@ -61,11 +61,12 @@ const SOCKET_URL =
     : window.location.origin;
 
 const LANGUAGES = [
-  { code: "hi-IN", label: "Hindi / Hinglish" },
-  { code: "en-US", label: "English" },
-  { code: "gu-IN", label: "Gujarati" },
-  { code: "mr-IN", label: "Marathi" },
-  { code: "es-ES", label: "Spanish" },
+  { code: "hi-IN", label: "🇮🇳 Hindi (हिंदी)" },
+  { code: "en-IN", label: "🇮🇳 Hinglish / English (India)" },
+  { code: "en-US", label: "🇺🇸 English (US)" },
+  { code: "gu-IN", label: "🇮🇳 Gujarati" },
+  { code: "mr-IN", label: "🇮🇳 Marathi" },
+  { code: "es-ES", label: "🇪🇸 Spanish" },
 ];
 
 // Audio synthesizer beep for Timer Completion Alert
@@ -284,6 +285,7 @@ export default function App() {
   const selectedLangRef = useRef("hi-IN");
   const speakTextRef = useRef(null);
   const latestTranscriptRef = useRef("");
+  const silenceTimerRef = useRef(null);
 
   useEffect(() => {
     selectedLangRef.current = selectedLang;
@@ -415,7 +417,7 @@ export default function App() {
     return null;
   }, []);
 
-  // Text-To-Speech Output Function
+  // Text-To-Speech Output Function with iOS Safari Audio Queue Resuming
   const speakText = useCallback(
     (text, langCode, onEndCallback) => {
       if (!ttsEnabled || !("speechSynthesis" in window)) {
@@ -423,10 +425,14 @@ export default function App() {
         return;
       }
       try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         window.speechSynthesis.cancel();
+
         const cleanText = text
           .replace(/[#*`_~>[\]()]/g, "")
-          .replace(/[🔊🌐🔇🔍🎥📺❓❌⚡💡🗣️🔋⏰🧮💻👁️🌤️📰📲]/g, "")
+          .replace(/[🔊🌐🔇🔍🎥📺❓❌⚡💡🗣️🔋⏰🧮💻👁️🌤️📰📲🇮🇳🇺🇸🇪🇸]/gu, "")
           .trim();
 
         if (!cleanText) {
@@ -443,14 +449,21 @@ export default function App() {
           utterance.voice = femaleVoice;
         }
 
-        utterance.pitch = 1.18;
+        utterance.pitch = 1.15;
         utterance.rate = 1.0;
 
         if (onEndCallback) {
           utterance.onend = onEndCallback;
         }
 
-        window.speechSynthesis.speak(utterance);
+        // 40ms timeout ensures iOS Safari flushes previous cancel before speak
+        setTimeout(() => {
+          try {
+            window.speechSynthesis.speak(utterance);
+          } catch (speakErr) {
+            console.warn("Speak error:", speakErr);
+          }
+        }, 40);
       } catch (e) {
         console.warn("Speech synthesis error:", e);
         if (onEndCallback) onEndCallback();
@@ -640,6 +653,29 @@ export default function App() {
     };
   }, []);
 
+  // Explicit Stop & Send Helper (Safeguards against WebKit discarding speech)
+  const stopAndSend = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    const captured = (latestTranscriptRef.current || "").trim();
+    if (captured && !hasEmittedRef.current) {
+      hasEmittedRef.current = true;
+      sendCommand(captured);
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+      }
+    }
+    setIsListening(false);
+  }, [sendCommand]);
+
   // Speech Recognition with iOS Safari & Android Cross-Platform Support
   const startListening = () => {
     startListeningRef.current = startListening;
@@ -647,21 +683,18 @@ export default function App() {
     // 1. Unlock iOS Safari Web Audio / Speech Synthesis on user gesture
     if ("speechSynthesis" in window) {
       try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         const unlock = new SpeechSynthesisUtterance(" ");
         unlock.volume = 0.01;
         window.speechSynthesis.speak(unlock);
       } catch {}
     }
 
+    // 2. If already listening, user tapped the mic to finish and send!
     if (isListening) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (e) {
-          console.warn("Abort error:", e);
-        }
-      }
-      setIsListening(false);
+      stopAndSend();
       return;
     }
 
@@ -669,8 +702,16 @@ export default function App() {
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("Speech Recognition is not supported on this browser.");
+      alert(
+        "Speech Recognition is not supported on this browser. Kripya Safari ya Chrome use karein.",
+      );
       return;
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (_) {}
     }
 
     const recognition = new SpeechRecognition();
@@ -684,6 +725,7 @@ export default function App() {
 
     hasEmittedRef.current = false;
     latestTranscriptRef.current = "";
+    setTranscript("");
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -707,32 +749,78 @@ export default function App() {
       if (currentText) {
         latestTranscriptRef.current = currentText;
         setTranscript(currentText);
+
+        // iOS Safari Silence Detection: Auto-submit 1.2s after user finishes speaking
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = setTimeout(() => {
+          if (
+            !hasEmittedRef.current &&
+            latestTranscriptRef.current &&
+            latestTranscriptRef.current.trim()
+          ) {
+            hasEmittedRef.current = true;
+            sendCommand(latestTranscriptRef.current.trim());
+            try {
+              recognition.stop();
+            } catch (_) {}
+            setIsListening(false);
+          }
+        }, 1200);
       }
 
+      // If browser fires isFinal early
       if (isFinal && currentText.trim()) {
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         if (!hasEmittedRef.current) {
           hasEmittedRef.current = true;
           sendCommand(currentText.trim());
+          try {
+            recognition.stop();
+          } catch (_) {}
+          setIsListening(false);
         }
       }
     };
 
     recognition.onerror = (e) => {
       console.warn("Speech error:", e.error);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
+      // If we already transcribed text before error, send it!
+      if (
+        !hasEmittedRef.current &&
+        latestTranscriptRef.current &&
+        latestTranscriptRef.current.trim()
+      ) {
+        hasEmittedRef.current = true;
+        sendCommand(latestTranscriptRef.current.trim());
+        setIsListening(false);
+        return;
+      }
+
       setIsListening(false);
       if (e.error === "not-allowed") {
-        setResponse("❌ Microphone blocked! iPhone Settings ➔ Safari ➔ Microphone Allow karein.");
-        alert("Microphone permission blocked! iPhone Settings ➔ Safari ➔ Microphone ko 'Allow' karein.");
+        setResponse(
+          "❌ Microphone blocked! iPhone Settings ➔ Safari ➔ Microphone Allow karein.",
+        );
+        alert(
+          "Microphone permission blocked! iPhone Settings ➔ Safari ➔ Microphone ko 'Allow' karein.",
+        );
       } else if (e.error === "no-speech") {
-        setResponse("⚠️ Awaaz detect nahi hui. Kripya mic ke paas dobara bolein.");
+        setResponse(
+          "⚠️ Awaaz detect nahi hui. Tip: Mic ke paas bolein ya Hinglish/English chunein.",
+        );
       } else if (e.error === "network") {
-        setResponse("⚠️ Network error: iPhone ka internet ya Siri Dictation check karein.");
+        setResponse(
+          "⚠️ Network error: iPhone Settings ➔ General ➔ Keyboard ➔ Enable Dictation check karein.",
+        );
       } else {
-        setResponse(`⚠️ Speech error: ${e.error}`);
+        setResponse(`⚠️ Speech status: ${e.error}`);
       }
     };
 
     recognition.onend = () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       setIsListening(false);
       // iOS WebKit Fallback: If user spoke but Safari closed before setting isFinal
       if (
@@ -964,22 +1052,49 @@ export default function App() {
 
             {/* Mic Status Banner */}
             <div className="mic-action-banner">
-              <p className="tap-guide-text">
-                {isListening
-                  ? "Listening your voice..."
-                  : isAwake
-                    ? "🟢 Pal is Awake — Ask anything, analyze screen, or control devices!"
-                    : '🌙 Standby — Say "Pal" to wake up'}
-              </p>
-              {isListening && (
-                <div className="voice-wave-container">
-                  <span className="wave-bar b1"></span>
-                  <span className="wave-bar b2"></span>
-                  <span className="wave-bar b3"></span>
-                  <span className="wave-bar b4"></span>
-                  <span className="wave-bar b5"></span>
-                  <span className="listening-subtext">Sun rahi hoon...</span>
+              {isListening ? (
+                <div className="active-listening-box">
+                  {transcript ? (
+                    <div className="live-transcript-card">
+                      <div className="live-transcript-header">
+                        <span className="hearing-pulse-badge">
+                          <span className="pulse-dot"></span> Sun rahi hoon:
+                        </span>
+                        <button
+                          type="button"
+                          className="tap-to-send-btn"
+                          onClick={stopAndSend}
+                        >
+                          <Send size={13} /> Send Now
+                        </button>
+                      </div>
+                      <p className="live-transcript-text">"{transcript}"</p>
+                      <span className="silence-hint">
+                        ⏱️ Bolna band karte hi auto-send ho jaayega
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="listening-waiting-state">
+                      <div className="voice-wave-container">
+                        <span className="wave-bar b1"></span>
+                        <span className="wave-bar b2"></span>
+                        <span className="wave-bar b3"></span>
+                        <span className="wave-bar b4"></span>
+                        <span className="wave-bar b5"></span>
+                        <span className="listening-subtext">Sun rahi hoon...</span>
+                      </div>
+                      <p className="tap-guide-text">
+                        Bolein boss... (Bolte hi live words dikhenge)
+                      </p>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <p className="tap-guide-text">
+                  {isAwake
+                    ? "🟢 Pal is Awake — Ask anything, analyze screen, or control devices!"
+                    : '⚡ Mic tap karein ya "Pal" bolein!'}
+                </p>
               )}
             </div>
 
@@ -1034,7 +1149,21 @@ export default function App() {
                           <span className="bubble-sender-name">
                             {m.sender === "pal" ? "Pal AI" : "You"}
                           </span>
-                          <span className="bubble-time">{m.time}</span>
+                          <div className="bubble-header-actions">
+                            <span className="bubble-time">{m.time}</span>
+                            {m.sender === "pal" && (
+                              <button
+                                type="button"
+                                className="chat-speak-btn"
+                                onClick={() =>
+                                  speakText(m.text, selectedLangRef.current)
+                                }
+                                title="Awaaz suno"
+                              >
+                                <Volume2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {m.sender === "pal" ? (
                           <FormattedMessage content={m.text} />

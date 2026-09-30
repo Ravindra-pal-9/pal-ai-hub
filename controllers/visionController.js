@@ -7,7 +7,9 @@ import os from "os";
 export function captureScreen() {
   return new Promise((resolve, reject) => {
     if (process.platform !== "win32") {
-      return reject(new Error("Screen capture only available on Windows host."));
+      return reject(
+        new Error("Screen capture only available on Windows host."),
+      );
     }
     const tempFile = path.join(os.tmpdir(), `pal_screen_${Date.now()}.jpg`);
     const psScript = `

@@ -1354,25 +1354,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // 3. Standby Mode Check: If session inactive and user didn't mention "Pal"
-    if (!currentlyActive && !hasName) {
-      console.log("💤 Pal is in standby. Prompting user to say 'Pal'.");
-      const wakePrompt =
-        lang === "en-US"
-          ? "Pal is on standby. Please say 'Pal' to wake me up first."
-          : "Pal standby mode me hai. Kripya pehle 'Pal' bolkar wake up karein.";
-      socket.emit("agent_response", {
-        type: "sleep_mode",
-        status: "standby",
-        message: wakePrompt,
-        speechText: wakePrompt,
-        isAwake: false,
-        autoListen: false,
-      });
-      return;
-    }
-
-    // 4. Session Active or Pal named: Execute command via Gemini AI
+    // 3. User interaction always activates / refreshes Pal session!
     refreshSession();
 
     try {
