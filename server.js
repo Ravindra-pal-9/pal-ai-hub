@@ -170,6 +170,15 @@ async function executeAction(
   try {
     // LAPTOP ACTIONS
     if (device === "laptop" || !device) {
+      if (process.platform !== "win32") {
+        return {
+          type: "action",
+          message:
+            "Yes boss, main Cloud par 24/7 active hoon! Lekin aapka laptop abhi band (offline) hai, isliye ye PC action execute nahi ho sakta.",
+          speechText: "Yes boss, aapka laptop abhi offline hai.",
+          status: "warning",
+        };
+      }
       switch (action) {
         // Audio & Volume
         case "set_volume": {
