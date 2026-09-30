@@ -286,6 +286,45 @@ export default function App() {
   const speakTextRef = useRef(null);
   const latestTranscriptRef = useRef("");
   const silenceTimerRef = useRef(null);
+  const maxListenTimerRef = useRef(null);
+
+  // Forcefully release iPhone/Desktop Microphone hardware when Tab is closed, hidden, or minimized
+  useEffect(() => {
+    const releaseMicrophone = () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      if (maxListenTimerRef.current) {
+        clearTimeout(maxListenTimerRef.current);
+        maxListenTimerRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+        recognitionRef.current = null;
+      }
+      setIsListening(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        releaseMicrophone();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", releaseMicrophone);
+    window.addEventListener("beforeunload", releaseMicrophone);
+
+    return () => {
+      releaseMicrophone();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", releaseMicrophone);
+      window.removeEventListener("beforeunload", releaseMicrophone);
+    };
+  }, []);
 
   useEffect(() => {
     selectedLangRef.current = selectedLang;
@@ -659,6 +698,10 @@ export default function App() {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
+    if (maxListenTimerRef.current) {
+      clearTimeout(maxListenTimerRef.current);
+      maxListenTimerRef.current = null;
+    }
     const captured = (latestTranscriptRef.current || "").trim();
     if (captured && !hasEmittedRef.current) {
       hasEmittedRef.current = true;
@@ -672,6 +715,7 @@ export default function App() {
           recognitionRef.current.abort();
         } catch (_) {}
       }
+      recognitionRef.current = null;
     }
     setIsListening(false);
   }, [sendCommand]);
@@ -712,6 +756,7 @@ export default function App() {
       try {
         recognitionRef.current.abort();
       } catch (_) {}
+      recognitionRef.current = null;
     }
 
     const recognition = new SpeechRecognition();
@@ -763,6 +808,7 @@ export default function App() {
             try {
               recognition.stop();
             } catch (_) {}
+            recognitionRef.current = null;
             setIsListening(false);
           }
         }, 1200);
@@ -771,12 +817,14 @@ export default function App() {
       // If browser fires isFinal early
       if (isFinal && currentText.trim()) {
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        if (maxListenTimerRef.current) clearTimeout(maxListenTimerRef.current);
         if (!hasEmittedRef.current) {
           hasEmittedRef.current = true;
           sendCommand(currentText.trim());
           try {
             recognition.stop();
           } catch (_) {}
+          recognitionRef.current = null;
           setIsListening(false);
         }
       }
@@ -785,6 +833,7 @@ export default function App() {
     recognition.onerror = (e) => {
       console.warn("Speech error:", e.error);
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (maxListenTimerRef.current) clearTimeout(maxListenTimerRef.current);
 
       // If we already transcribed text before error, send it!
       if (
@@ -794,11 +843,20 @@ export default function App() {
       ) {
         hasEmittedRef.current = true;
         sendCommand(latestTranscriptRef.current.trim());
+        try {
+          recognition.abort();
+        } catch (_) {}
+        recognitionRef.current = null;
         setIsListening(false);
         return;
       }
 
+      try {
+        recognition.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
       setIsListening(false);
+
       if (e.error === "not-allowed") {
         setResponse(
           "❌ Microphone blocked! iPhone Settings ➔ Safari ➔ Microphone Allow karein.",
@@ -821,7 +879,10 @@ export default function App() {
 
     recognition.onend = () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (maxListenTimerRef.current) clearTimeout(maxListenTimerRef.current);
       setIsListening(false);
+      recognitionRef.current = null;
+
       // iOS WebKit Fallback: If user spoke but Safari closed before setting isFinal
       if (
         !hasEmittedRef.current &&
@@ -835,9 +896,16 @@ export default function App() {
 
     try {
       recognition.start();
+
+      // Safety Cap: If user leaves mic open without speaking, auto-close after 10 seconds to free the mic
+      if (maxListenTimerRef.current) clearTimeout(maxListenTimerRef.current);
+      maxListenTimerRef.current = setTimeout(() => {
+        stopAndSend();
+      }, 10000);
     } catch (e) {
       console.warn("Start error:", e);
       setIsListening(false);
+      recognitionRef.current = null;
     }
   };
 
@@ -1081,7 +1149,9 @@ export default function App() {
                         <span className="wave-bar b3"></span>
                         <span className="wave-bar b4"></span>
                         <span className="wave-bar b5"></span>
-                        <span className="listening-subtext">Sun rahi hoon...</span>
+                        <span className="listening-subtext">
+                          Sun rahi hoon...
+                        </span>
                       </div>
                       <p className="tap-guide-text">
                         Bolein boss... (Bolte hi live words dikhenge)
