@@ -1,0 +1,27 @@
+{
+  "name": "mern-jarvis",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "npm --prefix jarvis-frontend install && npm --prefix jarvis-frontend run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Pal AI Ultimate Smart Home & System Assistant",
+  "dependencies": {
+    "@google/genai": "^2.24.0",
+    "adbkit": "^2.11.1",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "open": "^11.0.4",
+    "socket.io": "^4.8.4"
+  },
+  "optionalDependencies": {
+    "loudness": "^0.4.2"
+  }
+}
