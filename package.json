@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "build": "npm install && npm --prefix jarvis-frontend install && npm --prefix jarvis-frontend run build",
-    "postinstall": "npm --prefix jarvis-frontend install && npm --prefix jarvis-frontend run build",
+    "build": "npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
