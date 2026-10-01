@@ -27,8 +27,15 @@ Write-Output '${tempFile.replace(/\\/g, "\\\\")}'
 
     execFile(
       "powershell",
-      ["-NoProfile", "-NonInteractive", "-Command", psScript],
-      { timeout: 8000 },
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        psScript,
+      ],
+      { timeout: 8000, windowsHide: true },
       (err, stdout, stderr) => {
         if (err) {
           console.warn("Screen capture warning:", stderr || err.message);

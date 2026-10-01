@@ -11,7 +11,7 @@ try {
   // Silently fallback if audio hardware is absent (Cloud/Linux container)
 }
 
-// Safe PowerShell Command Executor
+// Safe PowerShell Command Executor (100% silent background execution, no window popups)
 function runPowershell(command) {
   if (process.platform !== "win32") {
     return Promise.resolve("");
@@ -19,8 +19,15 @@ function runPowershell(command) {
   return new Promise((resolve) => {
     execFile(
       "powershell",
-      ["-NoProfile", "-NonInteractive", "-Command", command],
-      { timeout: 7000 },
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        command,
+      ],
+      { timeout: 7000, windowsHide: true },
       (err, stdout, stderr) => {
         if (err) {
           console.warn("PowerShell warning:", stderr || err.message);

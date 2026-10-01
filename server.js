@@ -1268,9 +1268,15 @@ async function refreshSystemStateAsync() {
   } catch {}
 }
 
-// Initial fetch and 30s background sync
+// Initial fetch on server start
 refreshSystemStateAsync();
-setInterval(refreshSystemStateAsync, 30000);
+
+// Background sync: ONLY query laptop hardware if an active client is actually connected
+setInterval(() => {
+  if (io.engine && io.engine.clientsCount > 0) {
+    refreshSystemStateAsync();
+  }
+}, 60000);
 
 // Socket.io Real-time Connection
 io.on("connection", (socket) => {
