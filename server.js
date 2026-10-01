@@ -168,17 +168,26 @@ async function executeAction(
 
   // 7. System Automation Actions (Laptop & TV)
   try {
-    // LAPTOP ACTIONS
-    if (device === "laptop" || !device) {
-      if (process.platform !== "win32") {
-        return {
-          type: "action",
-          message:
-            "Yes boss, main Cloud par 24/7 active hoon! Lekin aapka laptop abhi band (offline) hai, isliye ye PC action execute nahi ho sakta.",
-          speechText: "Yes boss, aapka laptop abhi offline hai.",
-          status: "warning",
-        };
-      }
+    // LAPTOP ACTIONS - Permanently Disconnected
+    const laptopActionNames = [
+      "set_volume", "volume_up", "volume_down", "mute", "unmute",
+      "set_brightness", "brightness_up", "brightness_down",
+      "screenshot", "take_screenshot", "lock_pc", "lock_laptop",
+      "sleep_pc", "sleep_laptop", "shutdown_pc", "shutdown_laptop",
+      "cancel_shutdown", "battery_status", "get_battery",
+      "media_play_pause", "media_next", "media_previous", "media_forward", "media_rewind",
+      "switch_tab", "scroll_down", "scroll_up", "open_app"
+    ];
+    if (device === "laptop" || laptopActionNames.includes(action)) {
+      const msg = "Yes boss, laptop connection is project se permanently remove kar diya gaya hai. Main aapki AI chat, weather, news, calculations aur timers me poori madad kar sakti hoon!";
+      return {
+        type: "chat",
+        message: msg,
+        speechText: msg,
+        status: "info",
+      };
+    }
+    if (!device) {
       switch (action) {
         // Audio & Volume
         case "set_volume": {
@@ -868,9 +877,30 @@ async function executeAction(
   };
 }
 
-// Fast-Path Direct Media Intent Matcher (Instant <10ms response without AI delay)
+// Fast-Path Direct Media Intent Matcher (TV & Cloud only, laptop disabled)
 function checkFastMediaCommand(prompt) {
   const p = (prompt || "").toLowerCase().trim();
+
+  // Explicit TV playback
+  if (
+    /(tv.*par|tv.*pe|on.*tv).*youtube/i.test(p) ||
+    /(youtube.*tv)/i.test(p)
+  ) {
+    const q = p
+      .replace(/(tv\s*par|tv\s*pe|on\s*tv|youtube|play|chalao|karo)/gi, " ")
+      .trim();
+    return {
+      type: "action",
+      device: "tv",
+      action: "search_youtube",
+      query: q || "trending songs",
+      text_response: `Yes boss, Smart TV par "${q || "YouTube"}" search kar diya hai.`,
+      speech_response: `Yes boss, TV par play kar diya hai.`,
+    };
+  }
+
+  // Laptop media controls disabled
+  return null;
 
   // 0. Direct YouTube or Spotify Song Playback
   if (/(youtube.*par|play.*on.*youtube|chalao.*youtube)/i.test(p)) {
@@ -1101,31 +1131,21 @@ async function processPrompt(
   }
 
   const systemInstruction = `
-    You are Pal, an omnipotent, highly intelligent AI Assistant combining Google Gemini and ChatGPT capabilities with Screen Vision, Real-Time Data (Weather/News), Timers, and Windows Laptop & Smart TV hardware control.
+    You are Pal, an intelligent, conversational AI Cloud Assistant powered by Google Gemini with Real-Time Data (Weather/News), Voice Timers, Smart TV controls, and helpful knowledge Q&A.
     Target Response Language Code: "${targetLanguage}".
 
     CORE RULES:
     1. ALWAYS start every response or speech with "Yes boss, " or "Yes boss! ".
     2. Maintain a friendly, polite, respectful female persona.
     3. Return valid JSON only.
+    4. IMPORTANT: Laptop hardware controls (volume, brightness, locking, screenshot, battery, shut down, app launch) have been permanently disconnected and removed from this project. If the user asks to control or lock their laptop, politely inform them: "Yes boss, laptop connection is project se remove kar diya gaya hai. Main aapki AI chat, weather, news, calculations aur timers mein poori madad kar sakti hoon!"
 
     SUPPORTED ACTIONS:
     - Weather: {"type": "action", "action": "get_weather", "target": "city name", "text_response": "...", "speech_response": "..."}
     - News: {"type": "action", "action": "get_news", "text_response": "...", "speech_response": "..."}
     - Timer: {"type": "action", "action": "set_timer", "value": seconds, "target": "label", "text_response": "...", "speech_response": "..."}
-    - Screen Vision: {"type": "action", "action": "analyze_screen", "query": "what to analyze", "text_response": "...", "speech_response": "..."}
-    - Laptop Hardware & Media Controls: {"type": "action", "device": "laptop", "action": "set_volume"|"volume_up"|"volume_down"|"mute"|"unmute"|"media_play_pause"|"media_next"|"media_previous"|"media_forward"|"media_rewind"|"media_fullscreen"|"media_exit_fullscreen"|"media_speed_up"|"media_speed_down"|"media_subtitles"|"media_mute_video"|"play_youtube_song"|"play_spotify"|"close_tab"|"close_window"|"switch_tab"|"scroll_down"|"scroll_up"|"set_brightness"|"screenshot"|"lock_pc"|"battery_status"|"time_date"|"open_app"|"search_google"|"search_youtube", "value": number, "query": "song or search query", "target": "target or label", "text_response": "...", "speech_response": "..."}
     - TV Remote: {"type": "action", "device": "tv", "action": "power_off"|"power_on"|"tv_home"|"tv_back"|"tv_dpad"|"volume_up"|"volume_down"|"tv_play_pause"|"open_app", ...}
     - Q&A / Knowledge / Chat: {"type": "chat", "text_response": "Full detailed markdown explanation/code/points (like ChatGPT/Gemini)", "speech_response": "Natural 1-2 sentence spoken summary"}
-
-    MEDIA & MUSIC RULES:
-    - If user asks to play a song/artist/music (e.g. "YouTube par Arijit Singh ke gaane play karo" or "play Believer on spotify" or "gaana chalao"): Use action "play_youtube_song" (or "play_spotify" if Spotify mentioned) with "query" set to the song/artist.
-    - If user asks to forward/skip (e.g. "10 second aage karo", "forward karo"): Use action "media_forward" with "value": seconds (default 10).
-    - If user asks to rewind/go back (e.g. "10 second peeche karo", "rewind karo"): Use action "media_rewind" with "value": seconds (default 10).
-    - If user asks for next/previous track: Use action "media_next" or "media_previous".
-    - If user asks to pause/play: Use action "media_play_pause".
-    - If user asks to fullscreen/exit fullscreen: Use action "media_fullscreen" or "media_exit_fullscreen".
-    - If user asks to close tab/window: Use action "close_tab" or "close_window".
   `;
 
   const contents = [
@@ -1236,47 +1256,16 @@ function putToSleep() {
   conversationHistory.length = 0;
 }
 
-// In-Memory Cached System State for Lightning Fast Responses
+// In-Memory System State (Cloud / AI Neutral)
 let cachedSystemState = {
-  volume: 50,
-  muted: false,
-  brightness: 80,
-  battery: { percent: 100, isCharging: true, text: "Battery 100%" },
   tvIp: tv.getTvIp(),
   isAwake: false,
   sessionTimeoutMs: SESSION_TIMEOUT_MS,
 };
 
 async function refreshSystemStateAsync() {
-  try {
-    const [vol, bright, batt] = await Promise.all([
-      laptop.getVolume().catch(() => 50),
-      laptop.getBrightness().catch(() => 80),
-      laptop
-        .getBatteryStatus()
-        .catch(() => ({ percent: 100, isCharging: true })),
-    ]);
-    cachedSystemState = {
-      volume: vol,
-      muted: false,
-      brightness: bright,
-      battery: batt,
-      tvIp: tv.getTvIp(),
-      isAwake: isSessionActive(),
-      sessionTimeoutMs: SESSION_TIMEOUT_MS,
-    };
-  } catch {}
+  // Laptop hardware polling permanently disabled
 }
-
-// Initial fetch on server start
-refreshSystemStateAsync();
-
-// Background sync: ONLY query laptop hardware if an active client is actually connected
-setInterval(() => {
-  if (io.engine && io.engine.clientsCount > 0) {
-    refreshSystemStateAsync();
-  }
-}, 60000);
 
 // Socket.io Real-time Connection
 io.on("connection", (socket) => {

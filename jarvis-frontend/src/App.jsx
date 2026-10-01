@@ -258,17 +258,13 @@ export default function App() {
 
   // Live System State
   const [systemState, setSystemState] = useState({
-    volume: 50,
-    muted: false,
-    brightness: 80,
-    battery: { percent: 100, isCharging: true },
     tvIp: "192.168.29.151",
   });
 
   const [messages, setMessages] = useState([
     {
       sender: "pal",
-      text: "Namaste Boss! Main Pal hoon — Google Gemini, Screen Vision AI, Live Weather & News, aur Voice Timers se equipped full AI assistant. Aap mujhse screen analyze karwa sakte hain, koi bhi question pooch sakte hain, ya laptop aur TV control kar sakte hain. Shuru karne ke liye 'Pal' bolein!",
+      text: "Namaste Boss! Main Pal hoon — Google Gemini, Live Real-Time Weather, Breaking News, aur Voice Timers se equipped aapki personal AI assistant. Aap mujhse koi bhi sawaal pooch sakte hain, coding sikh sakte hain, ya calculation karwa sakte hain. Shuru karne ke liye mic tap karein!",
       type: "sleep_mode",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
@@ -928,10 +924,6 @@ export default function App() {
 
   const quickCommands = [
     { label: '⚡ "Pal"', cmd: "Pal" },
-    {
-      label: '👁️ "Screen Vision"',
-      cmd: "Pal, meri screen dekho aur batao kya ho raha hai",
-    },
     { label: '🌤️ "Delhi Weather"', cmd: "Pal, Delhi ka mausam kaisa hai?" },
     { label: '📰 "Live News"', cmd: "Pal, aaj ki breaking news batao" },
     { label: '⏰ "5 Min Timer"', cmd: "Pal, 5 minute ka timer lagao" },
@@ -943,14 +935,10 @@ export default function App() {
       label: '🧮 "15000 ka 18% GST"',
       cmd: "Pal, 15000 ka 18% GST kitna hoga?",
     },
-    { label: '🔋 "Battery check"', cmd: "Pal, battery kitni hai?" },
-    { label: '📸 "Screenshot lo"', cmd: "Pal, screenshot lo" },
-    { label: '🔒 "Lock laptop"', cmd: "Pal, laptop lock karo" },
     { label: '📺 "TV YouTube"', cmd: "Pal, TV par YouTube chalao" },
-    { label: '🎵 "Song Pause/Play"', cmd: "Pal, gaana pause karo" },
-    { label: '💡 "Brightness 70%"', cmd: "Pal, brightness 70 percent karo" },
+    { label: '🌍 "Ek accha joke"', cmd: "Pal, ek majedar joke sunao" },
     { label: '🌐 "English me bolo"', cmd: "Pal, switch to English" },
-    { label: ' "So jao"', cmd: "Pal, so jao" },
+    { label: '🌙 "So jao"', cmd: "Pal, so jao" },
   ];
 
   return (
@@ -986,20 +974,6 @@ export default function App() {
               </button>
             )}
 
-            {/* Battery Pill */}
-            {systemState.battery?.percent !== undefined && (
-              <div
-                className={`battery-badge ${systemState.battery.isCharging ? "charging" : ""}`}
-                title={systemState.battery.text || "Battery"}
-              >
-                {systemState.battery.isCharging ? (
-                  <BatteryCharging size={13} />
-                ) : (
-                  <Battery size={13} />
-                )}
-                <span>{systemState.battery.percent}%</span>
-              </div>
-            )}
 
             {/* Language Dropdown */}
             <div className="lang-dropdown-wrapper">
@@ -1269,28 +1243,17 @@ export default function App() {
         {/* TAB 2: ADVANCED CONTROL DECK */}
         {activeTab === "deck" && (
           <main className="deck-container">
-            {/* SECTION 1: SCREEN VISION & LIVE DATA SPOTLIGHT */}
+            {/* SECTION 1: LIVE INTERNET DATA & AI TOOLS */}
             <div className="deck-card vision-spotlight">
               <div className="deck-card-header">
                 <div className="deck-title-group">
-                  <Eye size={18} className="deck-icon cyan" />
-                  <h3>Screen Vision & Live Internet Data</h3>
+                  <Sparkles size={18} className="deck-icon cyan" />
+                  <h3>Live Real-Time Data & AI Tools</h3>
                 </div>
-                <span className="deck-status-pill">Gemini Multimodal</span>
+                <span className="deck-status-pill">Gemini AI</span>
               </div>
 
               <div className="vision-buttons-grid">
-                <button
-                  className="vision-action-card"
-                  onClick={() => sendDirectAction({ action: "analyze_screen" })}
-                >
-                  <Eye size={20} className="card-icon cyan" />
-                  <div className="card-text">
-                    <h4>Analyze Screen Vision</h4>
-                    <p>Screen capture karke error fix ya summary samjhao</p>
-                  </div>
-                </button>
-
                 <button
                   className="vision-action-card"
                   onClick={() =>
@@ -1300,7 +1263,7 @@ export default function App() {
                   <CloudSun size={20} className="card-icon amber" />
                   <div className="card-text">
                     <h4>Live Real-Time Weather</h4>
-                    <p>Current temp, humidity aur condition check karo</p>
+                    <p>Current temp, humidity aur mausam check karo</p>
                   </div>
                 </button>
 
@@ -1331,387 +1294,22 @@ export default function App() {
                     <p>5 minute ka countdown shuru karo</p>
                   </div>
                 </button>
+
+                <button
+                  className="vision-action-card"
+                  onClick={() =>
+                    sendCommand("Pal, ek majedar joke sunao")
+                  }
+                >
+                  <Sparkles size={20} className="card-icon cyan" />
+                  <div className="card-text">
+                    <h4>Ek Majedar Joke</h4>
+                    <p>AI se ek funny joke ya shayari suno</p>
+                  </div>
+                </button>
               </div>
             </div>
 
-            {/* SECTION 2: LAPTOP CONTROLS */}
-            <div className="deck-card">
-              <div className="deck-card-header">
-                <div className="deck-title-group">
-                  <Monitor size={18} className="deck-icon cyan" />
-                  <h3>Laptop Control Hub</h3>
-                </div>
-                <span className="deck-status-pill">Windows Hub</span>
-              </div>
-
-              {/* Volume Slider */}
-              <div className="deck-control-row">
-                <div className="slider-label-row">
-                  <span className="slider-name">
-                    <Volume2 size={14} /> Volume
-                  </span>
-                  <span className="slider-val">{systemState.volume}%</span>
-                </div>
-                <div className="slider-flex">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={systemState.volume}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setSystemState((p) => ({ ...p, volume: v }));
-                    }}
-                    onMouseUp={(e) =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "set_volume",
-                        value: Number(e.target.value),
-                      })
-                    }
-                    onTouchEnd={(e) =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "set_volume",
-                        value: Number(e.target.value),
-                      })
-                    }
-                    className="deck-slider cyan"
-                  />
-                  <button
-                    className={`deck-mini-btn ${systemState.muted ? "danger" : ""}`}
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: systemState.muted ? "unmute" : "mute",
-                      })
-                    }
-                  >
-                    {systemState.muted ? (
-                      <VolumeX size={14} />
-                    ) : (
-                      <Volume2 size={14} />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Brightness Slider */}
-              <div className="deck-control-row">
-                <div className="slider-label-row">
-                  <span className="slider-name">
-                    <Sun size={14} /> Brightness
-                  </span>
-                  <span className="slider-val">{systemState.brightness}%</span>
-                </div>
-                <div className="slider-flex">
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={systemState.brightness}
-                    onChange={(e) => {
-                      const b = Number(e.target.value);
-                      setSystemState((p) => ({ ...p, brightness: b }));
-                    }}
-                    onMouseUp={(e) =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "set_brightness",
-                        value: Number(e.target.value),
-                      })
-                    }
-                    onTouchEnd={(e) =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "set_brightness",
-                        value: Number(e.target.value),
-                      })
-                    }
-                    className="deck-slider amber"
-                  />
-                </div>
-              </div>
-
-              {/* Media Playback Controls */}
-              <div className="deck-media-group">
-                <span className="group-label">
-                  Media & App Controls (YouTube, Spotify, etc.)
-                </span>
-                <div className="media-buttons-row">
-                  <button
-                    className="deck-pill-btn"
-                    title="Rewind 10 Seconds"
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_rewind",
-                        value: 10,
-                      })
-                    }
-                  >
-                    <Rewind size={14} /> -10s
-                  </button>
-                  <button
-                    className="deck-pill-btn"
-                    title="Previous Track"
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_previous",
-                      })
-                    }
-                  >
-                    <SkipBack size={14} /> Prev
-                  </button>
-                  <button
-                    className="deck-pill-btn highlight"
-                    title="Play / Pause"
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_play_pause",
-                      })
-                    }
-                  >
-                    <Play size={14} /> / <Pause size={14} /> Play/Pause
-                  </button>
-                  <button
-                    className="deck-pill-btn"
-                    title="Next Track"
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_next",
-                      })
-                    }
-                  >
-                    Next <SkipForward size={14} />
-                  </button>
-                  <button
-                    className="deck-pill-btn"
-                    title="Forward 10 Seconds"
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_forward",
-                        value: 10,
-                      })
-                    }
-                  >
-                    +10s <FastForward size={14} />
-                  </button>
-                </div>
-                <div
-                  className="media-extra-row"
-                  style={{
-                    display: "flex",
-                    gap: "8px",
-                    marginTop: "8px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <button
-                    className="deck-pill-btn"
-                    style={{ flex: 1, minWidth: "90px", fontSize: "0.78rem" }}
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_fullscreen",
-                      })
-                    }
-                  >
-                    <Maximize size={13} /> Fullscreen
-                  </button>
-                  <button
-                    className="deck-pill-btn"
-                    style={{ flex: 1, minWidth: "90px", fontSize: "0.78rem" }}
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_mute_video",
-                      })
-                    }
-                  >
-                    <VolumeX size={13} /> Mute Vid
-                  </button>
-                  <button
-                    className="deck-pill-btn"
-                    style={{ flex: 1, minWidth: "90px", fontSize: "0.78rem" }}
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "media_speed_up",
-                      })
-                    }
-                  >
-                    ⚡ Speed +
-                  </button>
-                  <button
-                    className="deck-pill-btn"
-                    style={{ flex: 1, minWidth: "90px", fontSize: "0.78rem" }}
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "close_tab",
-                      })
-                    }
-                  >
-                    <X size={13} /> Close Tab
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick System Buttons */}
-              <div className="deck-grid-row">
-                <button
-                  className="deck-action-btn"
-                  onClick={() =>
-                    sendDirectAction({
-                      device: "laptop",
-                      action: "screenshot",
-                    })
-                  }
-                >
-                  <Camera size={16} />
-                  <span>Screenshot</span>
-                </button>
-
-                <button
-                  className="deck-action-btn"
-                  onClick={() =>
-                    sendDirectAction({
-                      device: "laptop",
-                      action: "lock_pc",
-                    })
-                  }
-                >
-                  <Lock size={16} />
-                  <span>Lock Laptop</span>
-                </button>
-
-                <button
-                  className="deck-action-btn"
-                  onClick={() =>
-                    sendDirectAction({
-                      device: "laptop",
-                      action: "battery_status",
-                    })
-                  }
-                >
-                  <Battery size={16} />
-                  <span>Battery</span>
-                </button>
-
-                <button
-                  className="deck-action-btn"
-                  onClick={() =>
-                    sendDirectAction({
-                      device: "laptop",
-                      action: "time_date",
-                    })
-                  }
-                >
-                  <Activity size={16} />
-                  <span>Time / Date</span>
-                </button>
-              </div>
-
-              {/* Windows Tools Grid */}
-              <div className="deck-apps-section">
-                <span className="group-label">Launch Windows Tools</span>
-                <div className="deck-app-chips">
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "calculator",
-                      })
-                    }
-                  >
-                    <Calculator size={14} /> Calc
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "notepad",
-                      })
-                    }
-                  >
-                    <FileText size={14} /> Notepad
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "task manager",
-                      })
-                    }
-                  >
-                    <Activity size={14} /> TaskMgr
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "explorer",
-                      })
-                    }
-                  >
-                    <Folder size={14} /> Files
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "downloads",
-                      })
-                    }
-                  >
-                    <Download size={14} /> Downloads
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "settings",
-                      })
-                    }
-                  >
-                    <Settings size={14} /> Settings
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "youtube",
-                      })
-                    }
-                  >
-                    ▶️ YouTube
-                  </button>
-                  <button
-                    onClick={() =>
-                      sendDirectAction({
-                        device: "laptop",
-                        action: "open_app",
-                        target: "whatsapp",
-                      })
-                    }
-                  >
-                    💬 WhatsApp
-                  </button>
-                </div>
-              </div>
-            </div>
 
             {/* SECTION 3: SMART TV REMOTE */}
             <div className="deck-card">
@@ -1976,8 +1574,8 @@ export default function App() {
               <Sparkles className="guide-sparkle" />
               <h2>Pal Full AI & Supercharged Guide</h2>
               <p>
-                Vision AI, Live Weather, News, Voice Timers, Laptop aur TV
-                Remote ke sabhi voice commands.
+                Live Weather, Breaking News, Voice Timers, Smart TV Remote aur
+                Conversational AI ke sabhi voice commands.
               </p>
             </div>
 
@@ -1985,26 +1583,28 @@ export default function App() {
               {/* Category 1 */}
               <div className="guide-card">
                 <div className="guide-card-header">
-                  <Eye size={16} className="guide-icon cyan" />
-                  <h4>Screen Vision AI & OCR</h4>
+                  <Globe size={16} className="guide-icon cyan" />
+                  <h4>Conversational AI & Knowledge</h4>
                 </div>
                 <ul>
                   <li>
                     <code>
-                      "Pal, meri screen dekho aur batao kya chal raha hai"
+                      "Pal, Quantum Computing kya hai asan shabdon mein samjhao"
                     </code>
                   </li>
                   <li>
                     <code>
-                      "Pal, screen par jo error hai usko explain aur solve karo"
+                      "Pal, AI agent aur LLM mein kya antar hota hai?"
                     </code>
                   </li>
                   <li>
-                    <code>"Pal, screen par dikh rahe code ka summary do"</code>
+                    <code>
+                      "Pal, solar system ke baare mein dilchasp fact batao"
+                    </code>
                   </li>
                   <li>
-                    Gemini Vision laptop screen ko analyze karke turant solution
-                    dega!
+                    Google Gemini 2.5 Flash engine se instantaneous aur accurate
+                    jawab!
                   </li>
                 </ul>
               </div>
@@ -2094,29 +1694,25 @@ export default function App() {
               {/* Category 5 */}
               <div className="guide-card">
                 <div className="guide-card-header">
-                  <Monitor size={16} className="guide-icon blue" />
-                  <h4>Laptop Hardware Automation</h4>
+                  <Zap size={16} className="guide-icon blue" />
+                  <h4>Productivity & Daily Assistance</h4>
                 </div>
                 <ul>
                   <li>
-                    <code>"Laptop volume 50 karo"</code> /{" "}
-                    <code>"Volume badhao"</code> / <code>"Mute"</code>
+                    <code>"Pal, ek funny joke sunao"</code> /{" "}
+                    <code>"Kuch naya motivation do"</code>
                   </li>
                   <li>
-                    <code>"Gaana pause karo"</code> /{" "}
-                    <code>"Next track chalao"</code>
+                    <code>"Pal, healthy lifestyle ke tips batao"</code>
                   </li>
                   <li>
-                    <code>"Brightness 70 karo"</code> /{" "}
-                    <code>"Screen light badhao"</code>
+                    <code>"Pal, interview preparation tips kya hain?"</code>
                   </li>
                   <li>
-                    <code>"Screenshot lo"</code> /{" "}
-                    <code>"Laptop lock kar do"</code>
+                    <code>"Pal, aaj ka din productive kaise banayein?"</code>
                   </li>
                   <li>
-                    <code>"Battery kitni hai?"</code> /{" "}
-                    <code>"Time kya hua hai?"</code>
+                    <code>"Abhi kya time hua hai?"</code>
                   </li>
                 </ul>
               </div>
@@ -2156,14 +1752,11 @@ export default function App() {
         <footer className="jarvis-device-bar">
           <div className="device-card">
             <div className="device-icon-box">
-              <Monitor className="device-svg" />
+              <Globe className="device-svg" />
             </div>
             <div className="device-info">
-              <p className="device-title">Laptop Hub</p>
-              <p className="device-sub">
-                Vol {systemState.volume}% •{" "}
-                {systemState.battery?.percent || 100}% Batt
-              </p>
+              <p className="device-title">Pal Cloud AI</p>
+              <p className="device-sub">Online • Gemini Engine</p>
             </div>
           </div>
 
